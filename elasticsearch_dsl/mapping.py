@@ -45,7 +45,7 @@ class Mapping(object):
             fields.append(String(**self._meta['_all']))
 
         for f in chain(fields, self.properties._collect_fields()):
-            for analyzer_name in ('analyzer', 'index_analyzer', 'search_analyzer'):
+            for analyzer_name in ('analyzer', 'search_analyzer'):
                 if not hasattr(f, analyzer_name):
                     continue
                 analyzer = getattr(f, analyzer_name)
@@ -54,7 +54,7 @@ class Mapping(object):
                 if not d:
                     continue
 
-                # merge the defintion
+                # merge the definition
                 # TODO: conflict detection/resolution
                 for key in d:
                     analysis.setdefault(key, {}).update(d[key])
@@ -138,5 +138,14 @@ class Mapping(object):
 
     def to_dict(self):
         d = self.properties.to_dict()
-        d[self.doc_type].update(self._meta)
+        meta = self._meta
+
+        # hard coded serialization of analyzers in _all
+        if '_all' in meta:
+            meta = meta.copy()
+            _all = meta['_all'] = meta['_all'].copy()
+            for f in ('analyzer', 'search_analyzer'):
+                if hasattr(_all.get(f, None), 'to_dict'):
+                    _all[f] = _all[f].to_dict()
+        d[self.doc_type].update(meta)
         return d

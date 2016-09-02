@@ -3,8 +3,46 @@
 Changelog
 =========
 
-0.0.9 (dev)
------------
+2.1.0 (2016-06-29)
+------------------
+ * ``inner_hits`` are now also wrapped in ``Response``
+ * ``+`` operator is deprecated, ``.query()`` now uses ``&`` to combine queries
+ * added ``mget`` method to ``DocType``
+ * fixed validation for "empty" values like ``''`` and ``[]``
+
+2.0.0 (2016-02-18)
+------------------
+Compatibility with Elasticsearch 2.x:
+
+ * Filters have been removed and additional queries have been added. Instead of
+   ``F`` objects you can now use ``Q``.
+ * ``Search.filter`` is now just a shortcut to add queries in filter context
+ * support for pipeline aggregations added
+
+Backwards incompatible changes:
+
+ * list of analysis objects and classes was removed, any string used as
+   tokenizer, char or token filter or analyzer will be treated as a builtin
+ * internal method ``Field.to_python`` has been renamed to ``deserialize`` and
+   an optional serialization mechanic for fields has been added.
+ * Custom response class is now set by ``response_class`` method instead of a
+   kwarg to ``Search.execute``
+
+Other changes:
+
+ * ``FacetedSearch`` now supports pagination via slicing
+
+0.0.10 (2016-01-24)
+-------------------
+ * ``Search`` can now be iterated over to get back hits
+ * ``Search`` now caches responses from Elasticsearch
+ * ``DateHistogramFacet`` now defaults to returning empty intervals
+ * ``Search`` no longer accepts positional parameters
+ * Experimental ``MultiSearch`` API
+ * added option to talk to ``_suggest`` endpoint (``execute_suggest``)
+
+0.0.9 (2015-10-26)
+------------------
  * ``FacetedSearch`` now uses its own ``Facet`` class instead of built in
    aggregations
 

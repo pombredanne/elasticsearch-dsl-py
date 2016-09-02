@@ -2,6 +2,14 @@ from pytest import raises
 
 from elasticsearch_dsl import result
 
+def test_attribute_error_in_hits_is_not_hidden(dummy_response):
+    def f(hit):
+        raise AttributeError()
+
+    r = result.Response(dummy_response, callbacks={'employee': f})
+    with raises(TypeError):
+        r.hits
+
 def test_interactive_helpers(dummy_response):
     res = result.Response(dummy_response)
     hits = res.hits
@@ -19,7 +27,7 @@ def test_interactive_helpers(dummy_response):
     assert set(['meta', 'city', 'name']) == set(dir(h))
     assert "<Result(test-index/company/elasticsearch): %r>" % dummy_response['hits']['hits'][0]['_source'] == repr(h)
 
-def test_enpty_response_is_false(dummy_response):
+def test_empty_response_is_false(dummy_response):
     dummy_response['hits']['hits'] = []
     res = result.Response(dummy_response)
 

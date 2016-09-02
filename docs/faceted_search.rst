@@ -32,13 +32,32 @@ declaring a ``FacetedSearch`` subclass:
 ``facets``
   dictionary of facets to display/filter on. The key is the name displayed and
   values should be instances of any ``Facet`` subclass, for example: ``{'tags':
-  TermsFacet(field='tags')``
+  TermsFacet(field='tags')}``
+
+
+Facets
+~~~~~~
+
+There are several different facets available:
+
+``TermsFacet``
+  provides an option to split documents into groups based on a value of a field, for example ``TermsFacet(field='category')``
+
+``DateHistogramFacet``
+  split documents into time intervals, example: ``DateHistogramFacet(field="published_date", interval="day")``
+
+``HistogramFacet``
+  similar to ``DateHistogramFacet`` but for numerical values: ``HistogramFacet(field="rating", interval=2)``
+
+``Rangefacet``
+  allows you to define your own ranges for a numerical fields:
+  ``Rangefacet(field="comment_count", ranges=[("few", (None, 2)), ("lots", (2, None))])``
 
 Advanced
 ~~~~~~~~
 
 If you require any custom behavior or modifications simply override one or more
-of the methods responsible for the class' functions. The two main methods are:
+of the methods responsible for the class' functions:
 
 ``search(self)``
   is responsible for constructing the ``Search`` object used. Override this if
@@ -48,6 +67,10 @@ of the methods responsible for the class' functions. The two main methods are:
 ``query(self, search)``
   adds the query postion of the search (if search input specified), by default
   using ``MultiField`` query. Override this if you want to modify the query type used.
+
+``highlight(self, search)``
+  defines the highlighting on the ``Search`` object and returns a new one.
+  Default behavior is to highlight on all fields specified for search.
 
 
 Usage
@@ -72,7 +95,7 @@ Response
 the response returned from the ``FacetedSearch`` object (by calling
 ``.execute()``) is a subclass of the standard ``Response`` class that adds a
 property called ``facets`` which contains a dictionary with lists of buckets -
-each represented by a tuple of key, document cound and a flag indicating
+each represented by a tuple of key, document count and a flag indicating
 whether this value has been filtered on.
 
 Example

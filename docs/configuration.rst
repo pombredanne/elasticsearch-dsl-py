@@ -11,7 +11,9 @@ serializer (``elasticsearch_dsl.serializer.serializer``) that will make sure
 your objects are correctly serialized into json every time. The
 ``create_connection`` method that is described here (and that ``configure``
 method uses under the hood) will do that automatically for you, unless you
-explicitly specify your own serializer.
+explicitly specify your own serializer. The serializer we use will also allow
+you to serialize your own objects - just define a ``to_dict()`` method on your
+objects and it will automatically be called when serializing to json.
 
 .. note::
 
@@ -36,7 +38,7 @@ already associated with:
 
 .. code:: python
 
-    s = s.using(Elasticsearch('otherhost:9200')
+    s = s.using(Elasticsearch('otherhost:9200'))
 
 
 .. _default connection:
@@ -49,12 +51,14 @@ To define a default connection that will be used globally, use the
 
 .. code:: python
 
-    from elasticsearch_dsl import connections
+    from elasticsearch_dsl.connections import connections
 
-    connections.connections.create_connection(hosts=['localhost'], timeout=20)
+    connections.create_connection(hosts=['localhost'], timeout=20)
 
 Any keyword arguments (``hosts`` and ``timeout`` in our example) will be passed
-to the ``Elasticsearch`` class.
+to the ``Elasticsearch`` class from ``elasticsearch-py``. To see all the
+possible configuration options see the `documentation
+<http://elasticsearch-py.readthedocs.io/en/master/api.html#elasticsearch>`_.
 
 Multiple clusters
 -----------------
@@ -64,11 +68,14 @@ time using the ``configure`` method:
 
 .. code:: python
 
-    from elasticsearch_dsl import connections
+    from elasticsearch_dsl.connections import connections
 
     connections.configure(
         default={'hosts': 'localhost'},
-        dev={'hosts': ['esdev1.example.com:9200'], sniff_on_start=True}
+        dev={
+            'hosts': ['esdev1.example.com:9200'],
+            'sniff_on_start': True
+        }
     )
 
 Such connections will be constructed lazily when requested for the first time.

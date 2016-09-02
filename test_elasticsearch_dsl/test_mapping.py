@@ -1,3 +1,5 @@
+import json
+
 from elasticsearch_dsl import mapping, String, Nested, analysis
 
 
@@ -67,7 +69,7 @@ def test_mapping_can_collect_all_analyzers():
     )
     a2 = analysis.analyzer('english')
     a3 = analysis.analyzer('unknown_custom')
-    a4 = analysis.analyzer('my_analyzer2', 
+    a4 = analysis.analyzer('my_analyzer2',
         tokenizer=analysis.tokenizer('trigram', 'nGram', min_gram=3, max_gram=3),
         filter=[analysis.token_filter('my_filter2', 'stop', stopwords=['c', 'd'])],
     )
@@ -76,12 +78,12 @@ def test_mapping_can_collect_all_analyzers():
     m = mapping.Mapping('article')
     m.field('title', 'string', analyzer=a1,
         fields={
-            'english': String(index_analyzer=a2),
+            'english': String(analyzer=a2),
             'unknown': String(search_analyzer=a3),
         }
     )
     m.field('comments', Nested(properties={
-        'author': String(index_analyzer=a4)
+        'author': String(analyzer=a4)
     }))
     m.meta('_all', analyzer=a5)
 
@@ -100,6 +102,8 @@ def test_mapping_can_collect_all_analyzers():
         }
     } == m._collect_analysis()
 
+    assert json.loads(json.dumps(m.to_dict())) == m.to_dict()
+
 
 def test_mapping_can_collect_multiple_analyzers():
     a1 = analysis.analyzer(
@@ -113,12 +117,12 @@ def test_mapping_can_collect_multiple_analyzers():
         filter=[analysis.token_filter('my_filter2', 'stop', stopwords=['c', 'd'])],
     )
     m = mapping.Mapping('article')
-    m.field('title', 'string', analyzer=a1, index_analyzer=a1, search_analyzer=a2)
+    m.field('title', 'string', analyzer=a1, search_analyzer=a2)
     m.field(
         'text', 'string', analyzer=a1,
         fields={
-            'english': String(index_analyzer=a1),
-            'unknown': String(index_analyzer=a1, search_analyzer=a2),
+            'english': String(analyzer=a1),
+            'unknown': String(analyzer=a1, search_analyzer=a2),
         }
     )
     assert {

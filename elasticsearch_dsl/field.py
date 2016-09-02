@@ -1,6 +1,7 @@
 from datetime import date
 from dateutil import parser
 from six import itervalues
+from six.moves import map
 
 from .utils import DslBase, _make_dsl_class, ObjectBase, AttrDict, AttrList
 from .exceptions import ValidationException
@@ -49,7 +50,10 @@ class Field(DslBase):
         self._required = kwargs.pop('required', False)
         super(Field, self).__init__(*args, **kwargs)
 
-    def _to_python(self, data):
+    def _serialize(self, data):
+        return data
+
+    def _deserialize(self, data):
         return data
 
     def _empty(self):
@@ -60,17 +64,21 @@ class Field(DslBase):
             return AttrList([])
         return self._empty()
 
-    def to_python(self, data):
+    def serialize(self, data):
         if isinstance(data, (list, AttrList)):
-            data[:] = map(self._to_python, data)
+            return list(map(self._serialize, data))
+        return self._serialize(data)
+
+    def deserialize(self, data):
+        if isinstance(data, (list, AttrList)):
+            data[:] = map(self._deserialize, data)
             return data
-        return self._to_python(data)
+        return self._deserialize(data)
 
     def clean(self, data):
         if data is not None:
-            data = self.to_python(data)
-        # FIXME: numeric 0
-        if not data and self._required:
+            data = self.deserialize(data)
+        if data in (None, [], {}) and self._required:
             raise ValidationException("Value required for this field.")
         return data
 
@@ -79,6 +87,18 @@ class Field(DslBase):
         name, value = d.popitem()
         value['type'] = name
         return value
+
+class CustomField(Field):
+    name = 'custom'
+    _coerce = True
+
+    def to_dict(self):
+        if isinstance(self.builtin_type, Field):
+            return self.builtin_type.to_dict()
+
+        d = super(CustomField, self).to_dict()
+        d['type'] = self.builtin_type
+        return d
 
 class InnerObjectWrapper(ObjectBase):
     def __init__(self, mapping, **kwargs):
@@ -105,9 +125,12 @@ class InnerObject(object):
     def _empty(self):
         return self._doc_class(self.properties)
 
+    def _wrap(self, data):
+        return self._doc_class(self.properties, **data)
+
     def empty(self):
         if self._multi:
-            return AttrList([], lambda d: self._doc_class(self.properties, **d))
+            return AttrList([], self._wrap)
         return self._empty()
 
     def __getitem__(self, name):
@@ -142,7 +165,7 @@ class InnerObject(object):
                 continue
             our[name] = other[name]
 
-    def _to_python(self, data):
+    def _deserialize(self, data):
         if data is None:
             return None
         # don't wrap already wrapped data
@@ -150,13 +173,16 @@ class InnerObject(object):
             return data
 
         if isinstance(data, (list, AttrList)):
-            data[:] = list(map(self._to_python, data))
+            data[:] = list(map(self._deserialize, data))
             return data
 
         if isinstance(data, AttrDict):
             data = data._d_
 
-        return self._doc_class(self.properties, **data)
+        return self._wrap(data)
+
+    def _serialize(self, data):
+        return data.to_dict()
 
     def clean(self, data):
         data = super(InnerObject, self).clean(data)
@@ -185,7 +211,7 @@ class Date(Field):
     name = 'date'
     _coerce = True
 
-    def _to_python(self, data):
+    def _deserialize(self, data):
         if not data:
             return None
         if isinstance(data, date):
@@ -201,13 +227,24 @@ class String(Field):
     _param_defs = {
         'fields': {'type': 'field', 'hash': True},
         'analyzer': {'type': 'analyzer'},
-        'index_analyzer': {'type': 'analyzer'},
         'search_analyzer': {'type': 'analyzer'},
     }
     name = 'string'
 
     def _empty(self):
         return ''
+
+
+class Boolean(Field):
+    name = 'boolean'
+
+    def clean(self, data):
+        if data is not None:
+            data = self.deserialize(data)
+        if data is None and self._required:
+            raise ValidationException("Value required for this field.")
+        return data
+
 
 FIELDS = (
     'float',
@@ -216,7 +253,6 @@ FIELDS = (
     'short',
     'integer',
     'long',
-    'boolean',
     'ip',
     'attachment',
     'geo_point',
@@ -224,7 +260,7 @@ FIELDS = (
     'completion',
 )
 
-# generate the query classes dynamicaly
+# generate the query classes dynamically
 for f in FIELDS:
     fclass = _make_dsl_class(Field, f)
     globals()[fclass.__name__] = fclass
